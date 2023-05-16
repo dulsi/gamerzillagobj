@@ -39,7 +39,7 @@ GType		gamerzilla_gamerzillagobj_get_type	() G_GNUC_CONST;
 
 GamerzillaGamerzillaGobj*	gamerzilla_gamerzillagobj_new		(void);
 
-void		gamerzilla_gamerzillagobj_serverstart	(GamerzillaGamerzillaGobj *gamerzillagobj);
+void		gamerzilla_gamerzillagobj_serverstart	(GamerzillaGamerzillaGobj *gamerzillagobj, int connect);
 void		gamerzilla_gamerzillagobj_serverstop	(GamerzillaGamerzillaGobj *gamerzillagobj);
 
 #endif /* __GAMERZILLA_GAMERZILLAGOBJ_H__ */

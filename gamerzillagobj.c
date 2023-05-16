@@ -11,6 +11,7 @@
 
 pthread_t id;
 volatile int stop = 0;
+int useConnect = 0;
 
 void *run_server(void *arg);
 
@@ -27,17 +28,23 @@ G_DEFINE_TYPE (GamerzillaGamerzillaGobj, gamerzilla_gamerzillagobj, G_TYPE_OBJEC
     (G_TYPE_INSTANCE_GET_PRIVATE ((o), GAMERZILLA_GAMERZILLAGOBJ_TYPE, GamerzillaGamerzillaGobjPrivate))
 
 struct _GamerzillaGamerzillaGobjPrivate {
-    char *placeholder;
+    char *url;
+    char *username;
+    char *password;
 };
 
 enum
 {
     PROP_0,
 
+    PROP_GAMERZILLAURL,
+    PROP_USERNAME,
+    PROP_PASSWORD,
+
     N_PROPERTIES
 };
 
-static GParamSpec *obj_properties[N_PROPERTIES] = { };
+static GParamSpec *obj_properties[N_PROPERTIES] = { NULL, NULL, NULL };
 
 static void
 gamerzilla_gamerzillagobj_init (GamerzillaGamerzillaGobj *object)
@@ -50,6 +57,9 @@ gamerzilla_gamerzillagobj_finalize (GObject *object)
 {
     GamerzillaGamerzillaGobjPrivate *priv = GAMERZILLA_GAMERZILLAGOBJ_GET_PRIVATE (object);
 
+    g_free (priv->url);
+    g_free (priv->username);
+    g_free (priv->password);
     G_OBJECT_CLASS (gamerzilla_gamerzillagobj_parent_class)->finalize (object);
 }
 
@@ -62,6 +72,18 @@ gamerzilla_gamerzillagobj_set_property (GObject      *object,
     GamerzillaGamerzillaGobjPrivate *priv = GAMERZILLA_GAMERZILLAGOBJ_GET_PRIVATE (object);
 
     switch (property_id) {
+    case PROP_GAMERZILLAURL:
+	g_free (priv->url);
+	priv->url = g_value_dup_string (value);
+	break;
+    case PROP_USERNAME:
+	g_free (priv->username);
+	priv->username = g_value_dup_string (value);
+	break;
+    case PROP_PASSWORD:
+	g_free (priv->password);
+	priv->password = g_value_dup_string (value);
+	break;
     default:
 	G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
 	break;
@@ -77,6 +99,15 @@ gamerzilla_gamerzillagobj_get_property (GObject    *object,
     GamerzillaGamerzillaGobjPrivate *priv = GAMERZILLA_GAMERZILLAGOBJ_GET_PRIVATE (object);
 
     switch (property_id) {
+    case PROP_GAMERZILLAURL:
+	g_value_set_string (value, priv->url);
+	break;
+    case PROP_USERNAME:
+	g_value_set_string (value, priv->username);
+	break;
+    case PROP_PASSWORD:
+	g_value_set_string (value, priv->password);
+	break;
     default:
 	G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
 	break;
@@ -91,6 +122,47 @@ gamerzilla_gamerzillagobj_class_init (GamerzillaGamerzillaGobjClass *klass)
     object_class->set_property = gamerzilla_gamerzillagobj_set_property;
     object_class->get_property = gamerzilla_gamerzillagobj_get_property;
     object_class->finalize = gamerzilla_gamerzillagobj_finalize;
+
+    /**
+     * TutGreeter:url:
+     *
+     * The url for gamerzilla.
+     */
+    obj_properties[PROP_GAMERZILLAURL] = 
+	g_param_spec_string ("url",
+			     "Url",
+			     "The url for gamerzilla.",
+			     "",
+			     G_PARAM_READWRITE |
+			     G_PARAM_CONSTRUCT);
+    /**
+     * TutGreeter:username:
+     *
+     * The username for gamerzilla.
+     */
+    obj_properties[PROP_USERNAME] = 
+	g_param_spec_string ("username",
+			     "Username",
+			     "The username for gamerzilla.",
+			     "",
+			     G_PARAM_READWRITE |
+			     G_PARAM_CONSTRUCT);
+    /**
+     * TutGreeter:password:
+     *
+     * The password for gamerzilla.
+     */
+    obj_properties[PROP_PASSWORD] = 
+	g_param_spec_string ("password",
+			     "Password",
+			     "The password for gamerzilla.",
+			     "",
+			     G_PARAM_READWRITE |
+			     G_PARAM_CONSTRUCT);
+
+    g_object_class_install_properties (object_class,
+				       N_PROPERTIES,
+				       obj_properties);
 
     g_type_class_add_private (object_class, sizeof (GamerzillaGamerzillaGobjPrivate));
 }
@@ -121,14 +193,15 @@ gamerzilla_gamerzillagobj_new ()
  * Return value: nothing.
  */
 void
-gamerzilla_gamerzillagobj_serverstart (GamerzillaGamerzillaGobj *gamerzillagobj)
+gamerzilla_gamerzillagobj_serverstart (GamerzillaGamerzillaGobj *gamerzillagobj, int connect)
 {
     GamerzillaGamerzillaGobjPrivate *priv;
     g_return_if_fail (gamerzillagobj != NULL);
 
     priv = GAMERZILLA_GAMERZILLAGOBJ_GET_PRIVATE (gamerzillagobj);
+    useConnect = connect;
 
-    pthread_create(&id, NULL, run_server, NULL);
+    pthread_create(&id, NULL, run_server, priv);
 }
 
 /**
@@ -164,6 +237,7 @@ char *savePath[3] = {".local", "share", "gamerzillaserver"};
 
 void *run_server(void *arg)
 {
+	GamerzillaGamerzillaGobjPrivate *priv = (GamerzillaGamerzillaGobjPrivate *)arg;
 	char *savedir = NULL;
 	char *home = getenv("XDG_DATA_HOME");
 	if (!home)
@@ -196,36 +270,14 @@ void *run_server(void *arg)
 		savedir = (char *)malloc(100);
 		strcpy(savedir, "./gamerzillaserver/");
 	}
-	char *url = NULL;
-	char *name = NULL;
-	char *pswd = NULL;
-	bool useConfig = true;
-	bool useConnect = true;
-	char *config  = "server.cfg";
-	char *fullconfig = (char *)malloc(strlen(savedir) + strlen(config) + 1);
-	strcpy(fullconfig, savedir);
-	strcat(fullconfig, config);
-	if (useConfig && useConnect)
-	{
-		char tmp[201];
-		FILE *f = fopen(fullconfig, "r");
-		if ((f) && (NULL != fgets(tmp, 200, f)))
-		{
-			url = strdup(trimend(tmp));
-			if (NULL != fgets(tmp, 200, f))
-				name = strdup(trimend(tmp));
-			if (NULL != fgets(tmp, 200, f))
-				pswd = strdup(trimend(tmp));
-		}
-	}
 	bool init = GamerzillaStart(true, savedir);
 	if (!init)
 	{
 		fprintf(stderr, "Failed to start server\n");
 		pthread_exit(&stop);
 	}
-	if ((useConnect) && (url != NULL))
-		GamerzillaConnect(url, name, pswd);
+	if ((useConnect) && (priv->url != NULL))
+		GamerzillaConnect(priv->url, priv->username, priv->password);
 	struct timeval timeout;
 	while (!stop)
 	{

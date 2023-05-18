@@ -11,7 +11,7 @@
 
 pthread_t id;
 volatile int stop = 0;
-int useConnect = 0;
+volatile int useConnect = 0;
 
 void *run_server(void *arg);
 
@@ -124,7 +124,7 @@ gamerzilla_gamerzillagobj_class_init (GamerzillaGamerzillaGobjClass *klass)
     object_class->finalize = gamerzilla_gamerzillagobj_finalize;
 
     /**
-     * TutGreeter:url:
+     * GamerzillaGobj:url:
      *
      * The url for gamerzilla.
      */
@@ -136,7 +136,7 @@ gamerzilla_gamerzillagobj_class_init (GamerzillaGamerzillaGobjClass *klass)
 			     G_PARAM_READWRITE |
 			     G_PARAM_CONSTRUCT);
     /**
-     * TutGreeter:username:
+     * GamerzillaGobj:username:
      *
      * The username for gamerzilla.
      */
@@ -148,7 +148,7 @@ gamerzilla_gamerzillagobj_class_init (GamerzillaGamerzillaGobjClass *klass)
 			     G_PARAM_READWRITE |
 			     G_PARAM_CONSTRUCT);
     /**
-     * TutGreeter:password:
+     * GamerzillaGobj:password:
      *
      * The password for gamerzilla.
      */
@@ -193,15 +193,19 @@ gamerzilla_gamerzillagobj_new ()
  * Return value: nothing.
  */
 void
-gamerzilla_gamerzillagobj_serverstart (GamerzillaGamerzillaGobj *gamerzillagobj, int connect)
+gamerzilla_gamerzillagobj_serverstart (GamerzillaGamerzillaGobj *gamerzillagobj)
 {
     GamerzillaGamerzillaGobjPrivate *priv;
     g_return_if_fail (gamerzillagobj != NULL);
 
     priv = GAMERZILLA_GAMERZILLAGOBJ_GET_PRIVATE (gamerzillagobj);
-    useConnect = connect;
 
     pthread_create(&id, NULL, run_server, priv);
+}
+
+void gamerzilla_gamerzillagobj_connect (GamerzillaGamerzillaGobj *gamerzillagobj)
+{
+    useConnect = 1;
 }
 
 /**
@@ -276,11 +280,21 @@ void *run_server(void *arg)
 		fprintf(stderr, "Failed to start server\n");
 		pthread_exit(&stop);
 	}
-	if ((useConnect) && (priv->url != NULL))
-		GamerzillaConnect(priv->url, priv->username, priv->password);
+	if (useConnect)
+	{
+		if (priv->url != NULL)
+			GamerzillaConnect(priv->url, priv->username, priv->password);
+		useConnect = 0;
+	}
 	struct timeval timeout;
 	while (!stop)
 	{
+		if (useConnect)
+		{
+			if (priv->url != NULL)
+				GamerzillaConnect(priv->url, priv->username, priv->password);
+			useConnect = 0;
+		}
 		timeout.tv_sec = 5;
 		timeout.tv_usec = 0;
 		GamerzillaServerProcess(&timeout);

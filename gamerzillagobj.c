@@ -299,5 +299,6 @@ void *run_server(void *arg)
 		timeout.tv_usec = 0;
 		GamerzillaServerProcess(&timeout);
 	}
+	GamerzillaQuit();
 	pthread_exit(&stop);
 }

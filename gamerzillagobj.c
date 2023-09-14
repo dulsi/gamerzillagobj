@@ -197,6 +197,7 @@ gamerzilla_gamerzillagobj_serverstart (GamerzillaGamerzillaGobj *gamerzillagobj)
 {
     GamerzillaGamerzillaGobjPrivate *priv;
     g_return_if_fail (gamerzillagobj != NULL);
+    stop = 0;
 
     priv = GAMERZILLA_GAMERZILLAGOBJ_GET_PRIVATE (gamerzillagobj);
 

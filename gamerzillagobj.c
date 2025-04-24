@@ -4,7 +4,9 @@
  * 
  */
 
+#include <ctype.h>
 #include <stdio.h>
+#include <sys/stat.h>
 #include <pthread.h>
 #include <gamerzilla.h>
 #include "gamerzillagobj.h"
@@ -226,7 +228,7 @@ gamerzilla_gamerzillagobj_serverstop (GamerzillaGamerzillaGobj *gamerzillagobj)
     priv = GAMERZILLA_GAMERZILLAGOBJ_GET_PRIVATE (gamerzillagobj);
 
     stop = 1;
-    int* ptr;
+    void* ptr;
     pthread_join(id, &ptr);
 }
 
